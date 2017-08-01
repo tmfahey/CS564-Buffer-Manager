@@ -91,14 +91,17 @@ int main()
     // Retrieve the record we just added to the third page.
     std::cout << "Third page has a new record: "
         << third_page.getRecord(rid) << "\n\n";
+
+    std::cout << "here";
   }
   // new_file goes out of scope here, so file is automatically closed.
-
+  std::cout << "here1 ";
   // Delete the file since we're done with it.
   File::remove(filename);
+  std::cout << "here2";
 
 	//This function tests buffer manager, comment this line if you don't wish to test buffer manager
-	testBufMgr();
+	//testBufMgr();
 }
 
 void testBufMgr()
