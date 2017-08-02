@@ -67,7 +67,6 @@ void BufMgr::allocBuf(FrameId & frame)
     throw BufferExceededException();
   } 
 }
-
 	
 void BufMgr::readPage(File* file, const PageId pageNo, Page*& page)
 {
@@ -78,10 +77,7 @@ void BufMgr::readPage(File* file, const PageId pageNo, Page*& page)
       allocBuf(frameNo);
       Page target_page = file->readPage(pageNo);
       //add info to desctable
-      bufDescTable[frameNo].file = file;
-      bufDescTable[frameNo].pageNo = pageNo;
-      bufDescTable[frameNo].valid = true;
-      bufDescTable[frameNo].refbit = true;
+      bufDescTable[frameNo].Set(file, pageNo);
       hashTable->insert(file, pageNo, frameNo);
       // add page records to buffer frame
       for (PageIterator page_iter = (*page).begin();
@@ -89,8 +85,9 @@ void BufMgr::readPage(File* file, const PageId pageNo, Page*& page)
            ++page_iter) {
         bufPool[frameNo].insertRecord(*page_iter);
       }
+    }else{
+      bufDescTable[frameNo].pinCnt++;
     }
-    bufDescTable[frameNo].pinCnt++;
     page = &bufPool[frameNo];
 }
 
