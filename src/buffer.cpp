@@ -50,7 +50,7 @@ void BufMgr::allocBuf(FrameId & frame)
 {
   bool allocated = false;
   uint32_t fullCount = 0;
-  while(!allocated && fullCount < numBufs*2){
+  while(!allocated && fullCount < numBufs){
     if(bufDescTable[clockHand].pinCnt > 0){
       fullCount++;
       advanceClock();
@@ -62,9 +62,8 @@ void BufMgr::allocBuf(FrameId & frame)
       bufDescTable[frame].Clear();
       allocated = true;
     }
-    
   }
-  if(fullCount>=numBufs){
+  if(!allocated){
     throw BufferExceededException();
   } 
 }
