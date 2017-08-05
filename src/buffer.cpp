@@ -37,8 +37,10 @@ BufMgr::BufMgr(std::uint32_t bufs)
   clockHand = bufs - 1;
 }
 
-
 BufMgr::~BufMgr() {
+  delete [] bufPool;
+  delete [] bufDescTable;
+  delete hashTable;
 }
 
 void BufMgr::advanceClock()
@@ -59,6 +61,12 @@ void BufMgr::allocBuf(FrameId & frame)
       advanceClock();
     }else if(bufDescTable[clockHand].refbit==0 && bufDescTable[clockHand].pinCnt==0){
       frame = clockHand;
+      if(bufDescTable[frame].valid){
+        if(bufDescTable[frame].dirty){
+          (bufDescTable[frame].file)->writePage(bufPool[frame]);
+        }
+        hashTable->remove(bufDescTable[frame].file, bufDescTable[frame].pageNo);
+      }
       bufDescTable[frame].Clear();
       allocated = true;
     }
@@ -72,21 +80,18 @@ void BufMgr::readPage(File* file, const PageId pageNo, Page*& page)
 {
     FrameId frameNo;
     if(!hashTable->lookup(file, pageNo, frameNo)){
-      //page is not in a buffer frame yet, add it
-      //allocate space in buffer for the page
+      //page is not in a buffer frame yet, adding it
+      //allocate space
       allocBuf(frameNo);
-      Page target_page = file->readPage(pageNo);
-      //add info to desctable
+      //add to the buffer frame
+      bufPool[frameNo] = file->readPage(pageNo);
+      //add info to desctable and hashtable
       bufDescTable[frameNo].Set(file, pageNo);
       hashTable->insert(file, pageNo, frameNo);
-      // add page records to buffer frame
-      for (PageIterator page_iter = (*page).begin();
-           page_iter != (*page).end();
-           ++page_iter) {
-        bufPool[frameNo].insertRecord(*page_iter);
-      }
     }else{
+      //page already in buffer, inc pincnt and set refbit
       bufDescTable[frameNo].pinCnt++;
+      bufDescTable[frameNo].refbit=true;
     }
     page = &bufPool[frameNo];
 }
@@ -126,7 +131,6 @@ void BufMgr::flushFile(const File* file)
   for (FileIterator iter = tempFile.begin(); iter != tempFile.end(); ++iter) {
     FrameId frameNo;
     if(hashTable->lookup(file, (*iter).page_number(), frameNo)){
-      //if page is dirty, write it to disk
       if(bufDescTable[frameNo].pinCnt){
         throw PagePinnedException(tempFile.filename(), (*iter).page_number(), frameNo);
       }
@@ -140,10 +144,10 @@ void BufMgr::flushFile(const File* file)
   // Iterate through all pages in the file.
   for (FileIterator iter = tempFile.begin(); iter != tempFile.end(); ++iter) {
     FrameId frameNo;
-    if(hashTable->lookup(&tempFile, (*iter).page_number(), frameNo)){
+    if(hashTable->lookup(file, (*iter).page_number(), frameNo)){
       //if page is dirty, write it to disk
       if(bufDescTable[frameNo].dirty){
-        tempFile.writePage(*iter);
+        (bufDescTable[frameNo].file)->writePage(bufPool[frameNo]);
         bufDescTable[frameNo].dirty = false;
       }
     }
@@ -152,9 +156,11 @@ void BufMgr::flushFile(const File* file)
 
 void BufMgr::disposePage(File* file, const PageId PageNo)
 {
+    std::cout << "filename: " << file->filename() << "\n";
     FrameId frameNo;
-    //Delete page from buffer pool if present
     if(hashTable->lookup(file, PageNo, frameNo)){
+      //Page present in buffer, so remove it
+      hashTable->remove(bufDescTable[frameNo].file, bufDescTable[frameNo].pageNo);
       bufDescTable[frameNo].Clear();
     }
     //Delete page from file
