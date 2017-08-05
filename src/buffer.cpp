@@ -156,7 +156,6 @@ void BufMgr::flushFile(const File* file)
 
 void BufMgr::disposePage(File* file, const PageId PageNo)
 {
-    std::cout << "filename: " << file->filename() << "\n";
     FrameId frameNo;
     if(hashTable->lookup(file, PageNo, frameNo)){
       //Page present in buffer, so remove it
