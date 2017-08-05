@@ -101,7 +101,7 @@ void BufMgr::unPinPage(File* file, const PageId pageNo, const bool dirty)
 {
   FrameId frameNo;
   if(hashTable->lookup(file, pageNo, frameNo)){
-    if(bufDescTable[frameNo].pinCnt == 0){
+    if(bufDescTable[frameNo].pinCnt <= 0){
       throw PageNotPinnedException(file->filename(), pageNo, frameNo);
     }else{
       bufDescTable[frameNo].pinCnt--;
