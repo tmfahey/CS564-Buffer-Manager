@@ -53,11 +53,15 @@ void BufMgr::allocBuf(FrameId & frame)
   bool allocated = false;
   uint32_t fullCount = 0;
   while(!allocated && fullCount < numBufs){
-    if(bufDescTable[clockHand].pinCnt > 0){
-      fullCount++;
-      advanceClock();
+    if(!bufDescTable[clockHand].valid){
+      frame = clockHand;
+      bufDescTable[frame].Clear();
+      allocated = true;
     }else if(bufDescTable[clockHand].refbit==1){
       bufDescTable[clockHand].refbit=0;
+      advanceClock();
+    }else if(bufDescTable[clockHand].pinCnt > 0){
+      fullCount++;
       advanceClock();
     }else if(bufDescTable[clockHand].refbit==0 && bufDescTable[clockHand].pinCnt==0){
       frame = clockHand;
@@ -73,7 +77,7 @@ void BufMgr::allocBuf(FrameId & frame)
   }
   if(!allocated){
     throw BufferExceededException();
-  } 
+  }
 }
 	
 void BufMgr::readPage(File* file, const PageId pageNo, Page*& page)
